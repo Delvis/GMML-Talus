@@ -21,22 +21,25 @@ nlandmarks = c(128, 256)
 #   Modify main.dir variable to the full path of your auto3dgm-project
 #   folder location.
 
-main.dir <- "C:/auto3dgm-project" # Modify the path if necessary.
+main.dir <- "/Users/del/Desktop/GMtaliML" # Modify the path if necessary.
 
 input.dir <- paste(main.dir, '/input', sep = "")
 output.dir <- paste(main.dir, '/output', sep = "")
-source(paste(main.dir,'/rscripts' ,'/auto.alignment.R', sep = ""))
+source(paste(main.dir, '/rscripts', '/packageLoader.R', sep = ""))
+source(paste(main.dir, '/rscripts', '/auto.alignment.R', sep = ""))
 source(paste(main.dir, '/rscripts', '/shape.size.extractor.R', sep = ""))
 source(paste(main.dir, '/rscripts', '/mLearning.R', sep = ""))
 source(paste(main.dir, '/rscripts', '/performanceMetrics.R', sep = ""))
 
 ## Alignment step
-align <- auto.alignment(input.dir = input.dir, output.dir = output.dir, 
+align <- auto.alignment(input.dir = input.dir,
+                        output.dir = output.dir, 
                         nlandmarks = nlandmarks)
 
 ## Feature extraction
-dataset <- shape.size.extractor(output.dir = output.dir, pca.var.cutoff = 95,
-                                scale=TRUE)
+dataset <- shape.size.extractor(output.dir = output.dir,
+                                pca.var.cutoff = 95,
+                                scale = TRUE)
 
 ## Model Learning
 set.seed(01234567)
@@ -44,4 +47,4 @@ ml.model <- mLearning(dataset = dataset)
 
 ## Model Evaluation
 metrics <- performanceMetrics(ml.model = ml.model)
-print(metrics)
+metrics
