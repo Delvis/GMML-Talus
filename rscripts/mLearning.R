@@ -22,9 +22,9 @@ mLearning <- function(dataset){
    
    ncores <- detectCores() # Number of cores available [parallel]
    minions <- makeCluster(ncores)
-   models <- c("C5.0Rules", "C5.0Tree", "svmLinear", "svmPoly",
-               "svmRadial", "nnet", "rda", "JRip", "LMT", "knn")
-   #"lda", "xgbLinear" goes 89
+   models <- c("C5.0Rules", "C5.0Tree", "knn", "svmLinear", "svmPoly",
+               "svmRadial", "nnet", "LMT", "JRip","rda")
+
    ml.model <- list(model = list(), name = NA)
    for(i in 1:length(models)){
       #[caret]

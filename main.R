@@ -23,8 +23,8 @@ nlandmarks = c(128, 256)
 
 main.dir <- "/Users/del/Desktop/GMtaliML" # Modify the path if necessary.
 
-input.dir <- paste(main.dir, '/input', sep = "")
-output.dir <- paste(main.dir, '/output', sep = "")
+input.dir <- paste(main.dir, '/input/', sep = "")
+output.dir <- paste(main.dir, '/output/', sep = "")
 source(paste(main.dir, '/rscripts', '/packageLoader.R', sep = ""))
 source(paste(main.dir, '/rscripts', '/auto.alignment.R', sep = ""))
 source(paste(main.dir, '/rscripts', '/shape.size.extractor.R', sep = ""))
@@ -42,9 +42,10 @@ dataset <- shape.size.extractor(output.dir = output.dir,
                                 scale = TRUE)
 
 ## Model Learning
-set.seed(01234567)
+set.seed(19920804) # if you set a seed, you always get the same results (for reproducibility).
 ml.model <- mLearning(dataset = dataset)
 
 ## Model Evaluation
 metrics <- performanceMetrics(ml.model = ml.model)
 metrics
+write.csv(x = metrics, file = "19920804metrics.csv")

@@ -20,9 +20,14 @@ shape.size.extractor <- function(output.dir, pca.var.cutoff = 95, scale = TRUE){
    tic <- proc.time()[3] # Stopwatch START
    
    # Load required libraries
-   pkglist <- c("shapes", "geomorph", "MASS",
+   if	(!require("Biostrings")){
+     source("http://bioconductor.org/biocLite.R")
+     biocLite("Biostrings")
+   }
+   
+   pkglist <- c("shapes", "MASS", "geomorph", "digest",
              # Load parallel computing libraries for faster processing in multicore CPUs
-             "foreach", "parallel", "doParallel", "snow")
+              "parallel", "doParallel")
    loadPackages(pkglist)
    
    ncores <- detectCores() # Number of cores available [parallel]
@@ -49,52 +54,55 @@ shape.size.extractor <- function(output.dir, pca.var.cutoff = 95, scale = TRUE){
                        labels = c("Female","Male"))
    
    # Shape Extraction
-   minions <- makeCluster(ncores) # Backend registration [doParallel]
-   registerDoParallel(minions)  # Backend registration [doParallel]
+   # Parallel backend based on OS
+   if(!Sys.info()['sysname']=="Windows"){
+     minions <- makeCluster(ncores) # Backend registration [doParallel]
+   }else{minions <- makePSOCKcluster(ncores)} # Backend registration [doParallel]
+   ncores<-detectCores()
+   
+#    registerDoParallel(minions)  # Backend registration [doParallel]
    ############################################################################
-   shape.var <- foreach(i = 1:dim(landmark.data)[3],
-                        .combine = rbind,
-                        .packages = c("geomorph","shapes","stats"))%dopar%{
-                           #Perform GPA and OPA to obtain coordinates in Kendall Space
-                           
-                           # GPA
-                           gpa.lds <- procGPA(x = landmark.data[,,-i],
-                                              scale = scale,
-                                              proc.output = FALSE,
-                                              pcaoutput = FALSE,
-                                              distances = FALSE)$rotated
-                           # Mean shape of GPA
-                           meanConfig <- mshape(gpa.lds) # Mean configuration of Kendall Space
-                           # OPA
-                           opa.lds <- procOPA(A = meanConfig,
-                                              B = landmark.data[,,i],
-                                              scale = scale)$Bhat
-                           
-                           # Ordination I - PCA
-                           # Array to matrix
-                           gpa.coords <- two.d.array(A = gpa.lds)
-                           opa.coords <- two.d.array.one(A = opa.lds)
-                           # PCA model estimation
-                           pca.model <- prcomp(x = gpa.coords)
-                           # Explained variance of PCA
-                           pca.var <- (pca.model$sdev^2/sum(pca.model$sdev^2))*100
-                           # Cumulative variance
-                           pca.cvar <- cumsum(pca.var)
-                           # Retained PCAs
-                           ret.pca <- which(pca.cvar <= pca.var.cutoff)
-                           # PCA Scores
-                           pca.gpa <- predict(pca.model, gpa.coords)[,ret.pca]
-                           pca.opa <- predict(pca.model, opa.coords)[,ret.pca]
-                           
-                           # Ordination II - CVA
-                           # CVA model estimation
-                           library(MASS)
-                           cva.model <- lda(pca.gpa,
-                                            grouping = group.var[-i],
-                                            prior = c(0.5,0.5))
-                           shape <- predict(cva.model, pca.opa)$x
-                           shape
-                        }
+   shape.var <- parLapply(cl = minions, 1:dim(landmark.data)[3], function(i) {
+       
+       # GPA
+       gpa.lds <- shapes::procGPA(x = landmark.data[,,-i],
+                          scale = scale,
+                          proc.output = FALSE,
+                          pcaoutput = FALSE,
+                          distances = FALSE)$rotated
+       # Mean shape of GPA
+       meanConfig <- geomorph::mshape(gpa.lds) # Mean configuration of Kendall Space
+       # OPA
+       opa.lds <- shapes::procOPA(A = meanConfig,
+                          B = landmark.data[,,i],
+                          scale = scale)$Bhat
+       
+       # Ordination I - PCA
+       # Array to matrix
+       gpa.coords <- geomorph::two.d.array(A = gpa.lds)
+       opa.coords <- two.d.array.one(A = opa.lds)
+       # PCA model estimation
+       pca.model <- prcomp(x = gpa.coords)
+       # Explained variance of PCA
+       pca.var <- (pca.model$sdev^2/sum(pca.model$sdev^2))*100
+       # Cumulative variance
+       pca.cvar <- cumsum(pca.var)
+       # Retained PCAs
+       ret.pca <- which(pca.cvar <= pca.var.cutoff)
+       # PCA Scores
+       pca.gpa <- predict(pca.model, gpa.coords)[,ret.pca]
+       pca.opa <- predict(pca.model, opa.coords)[,ret.pca]
+       
+       # Ordination II - CVA
+       # CVA model estimation
+       library(MASS)
+       cva.model <- lda(pca.gpa,
+                        grouping = group.var[-i],
+                        prior = c(0.5,0.5))
+       shape <- predict(cva.model, pca.opa)$x
+       shape
+   })
+    shape.var <- do.call(rbind, shape.var)
    ############################################################################
    toc <- proc.time()[3]-tic # Stopwatch STOP
    end <- date()
